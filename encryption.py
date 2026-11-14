@@ -6,20 +6,17 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
 
-# Encryption configuration
-KEY_LENGTH = 32       # 32 bytes = 256 bits
-SALT_LENGTH = 16      # 16 bytes
-NONCE_LENGTH = 12     # 12 bytes
+KEY_LENGTH = 32
+SALT_LENGTH = 16
+NONCE_LENGTH = 12
 ITERATIONS = 600000
 
 
 def generate_salt():
-    """Generate a cryptographically random salt."""
     return os.urandom(SALT_LENGTH)
 
 
-def derive_key(passphrase, salt):
-    """Derive a 256-bit encryption key using PBKDF2."""
+def derive_key(passphrase, salt, iterations=ITERATIONS):
 
     if not passphrase:
         raise ValueError("Passphrase cannot be empty")
@@ -28,14 +25,13 @@ def derive_key(passphrase, salt):
         algorithm=hashes.SHA256(),
         length=KEY_LENGTH,
         salt=salt,
-        iterations=ITERATIONS
+        iterations=iterations
     )
 
     return kdf.derive(passphrase.encode("utf-8"))
 
 
 def build_aad(entry_id, entry_version, format_version):
-    """Build associated authenticated data."""
 
     return (
         f"vault:{format_version}:entry:{entry_id}:"
@@ -44,7 +40,6 @@ def build_aad(entry_id, entry_version, format_version):
 
 
 def encrypt_data(key, plaintext, aad):
-    """Encrypt plaintext using AES-256-GCM."""
 
     nonce = os.urandom(NONCE_LENGTH)
 
@@ -60,14 +55,11 @@ def encrypt_data(key, plaintext, aad):
 
 
 def decrypt_data(key, nonce, ciphertext, aad):
-    """Decrypt and authenticate AES-256-GCM ciphertext."""
 
     aesgcm = AESGCM(key)
 
-    plaintext = aesgcm.decrypt(
+    return aesgcm.decrypt(
         nonce,
         ciphertext,
         aad
     )
-
-    return plaintext
