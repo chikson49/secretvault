@@ -9,11 +9,13 @@ from cryptography.hazmat.primitives.ciphers.aead import (
 )
 
 
+# Cryptographic configuration
 KEY_LENGTH = 32
 SALT_LENGTH = 16
 NONCE_LENGTH = 12
 ITERATIONS = 600000
 
+# Supported encryption algorithms
 AES_CIPHER = "AES-256-GCM"
 CHACHA_CIPHER = "ChaCha20-Poly1305"
 
@@ -50,6 +52,18 @@ def build_aad(entry_id, entry_version, format_version):
     ).encode("utf-8")
 
 
+def get_cipher(key, cipher_name):
+
+    if cipher_name == AES_CIPHER:
+        return AESGCM(key)
+
+    elif cipher_name == CHACHA_CIPHER:
+        return ChaCha20Poly1305(key)
+
+    else:
+        raise ValueError("Unsupported cipher: " + str(cipher_name))
+
+
 def encrypt_data(
     key,
     plaintext,
@@ -59,14 +73,7 @@ def encrypt_data(
 
     nonce = os.urandom(NONCE_LENGTH)
 
-    if cipher_name == AES_CIPHER:
-        cipher = AESGCM(key)
-
-    elif cipher_name == CHACHA_CIPHER:
-        cipher = ChaCha20Poly1305(key)
-
-    else:
-        raise ValueError("Unsupported cipher")
+    cipher = get_cipher(key, cipher_name)
 
     ciphertext = cipher.encrypt(
         nonce,
@@ -85,14 +92,7 @@ def decrypt_data(
     cipher_name=AES_CIPHER
 ):
 
-    if cipher_name == AES_CIPHER:
-        cipher = AESGCM(key)
-
-    elif cipher_name == CHACHA_CIPHER:
-        cipher = ChaCha20Poly1305(key)
-
-    else:
-        raise ValueError("Unsupported cipher")
+    cipher = get_cipher(key, cipher_name)
 
     return cipher.decrypt(
         nonce,

@@ -8,11 +8,29 @@ import encryption
 from cryptography.exceptions import InvalidTag
 
 
-CIPHER_NAME = "AES-256-GCM"
 VERIFICATION_MARKER = b"SECRET_VAULT_PASSWORD_CHECK"
 
 
-def create_vault(passphrase):
+def get_vault_cipher():
+
+    metadata = database.get_metadata()
+
+    if metadata is None:
+        raise ValueError("No vault exists!")
+
+    cipher_name = metadata[3]
+
+    if cipher_name not in encryption.SUPPORTED_CIPHERS:
+        raise ValueError("Unsupported cipher")
+
+    return cipher_name
+
+
+def create_vault(passphrase, cipher_name=encryption.AES_CIPHER):
+
+    # Validate selected encryption algorithm
+    if cipher_name not in encryption.SUPPORTED_CIPHERS:
+        raise ValueError("Unsupported cipher")
 
     database.create_tables()
 
@@ -37,7 +55,8 @@ def create_vault(passphrase):
         encryption.encrypt_data(
             key,
             VERIFICATION_MARKER,
-            verification_aad
+            verification_aad,
+            cipher_name
         )
     )
 
@@ -45,7 +64,7 @@ def create_vault(passphrase):
     database.save_metadata(
         salt,
         encryption.ITERATIONS,
-        CIPHER_NAME,
+        cipher_name,
         verification_nonce,
         verification_ciphertext
     )
@@ -74,7 +93,7 @@ def unlock_vault(passphrase):
     if kdf_algorithm != "PBKDF2-HMAC-SHA256":
         raise ValueError("Unsupported KDF algorithm")
 
-    if cipher_name != CIPHER_NAME:
+    if cipher_name not in encryption.SUPPORTED_CIPHERS:
         raise ValueError("Unsupported cipher")
 
     if format_version != 1:
@@ -87,14 +106,15 @@ def unlock_vault(passphrase):
         iterations
     )
 
-    # Verify the passphrase
+    # Verify the passphrase using the stored cipher
     verification_aad = b"vault-verification:v1"
 
     decrypted_marker = encryption.decrypt_data(
         key,
         verification_nonce,
         verification_ciphertext,
-        verification_aad
+        verification_aad,
+        cipher_name
     )
 
     if decrypted_marker != VERIFICATION_MARKER:
@@ -104,6 +124,9 @@ def unlock_vault(passphrase):
 
 
 def add_secret(key, name, username, password):
+
+    # Identify the cipher used by this vault
+    cipher_name = get_vault_cipher()
 
     entry_id = str(uuid.uuid4())
     entry_version = 1
@@ -128,7 +151,8 @@ def add_secret(key, name, username, password):
     nonce, ciphertext = encryption.encrypt_data(
         key,
         plaintext,
-        aad
+        aad,
+        cipher_name
     )
 
     # Store only encrypted data
@@ -143,6 +167,9 @@ def add_secret(key, name, username, password):
 
 
 def retrieve_secret(key, entry_id):
+
+    # Identify the cipher used by this vault
+    cipher_name = get_vault_cipher()
 
     entry = database.get_entry(entry_id)
 
@@ -166,7 +193,8 @@ def retrieve_secret(key, entry_id):
         key,
         nonce,
         ciphertext,
-        aad
+        aad,
+        cipher_name
     )
 
     return json.loads(plaintext.decode("utf-8"))
