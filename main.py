@@ -21,7 +21,8 @@ def main():
     if cipher_choice == "1":
 
         cipher_name = encryption.AES_CIPHER
-        database.DB_NAME = "secure_vault.db"
+        database.DB_NAME = "swapped_test.db"
+        #database.DB_NAME = "secure_vault.db"
 
     elif cipher_choice == "2":
 
