@@ -3,12 +3,39 @@ from getpass import getpass
 
 import database
 import vault
+import encryption
 
 from cryptography.exceptions import InvalidTag
 
 
 def main():
 
+    print("\n===== SECURE VAULT =====")
+    print("Select encryption algorithm:")
+    print("1. AES-256-GCM")
+    print("2. ChaCha20-Poly1305")
+
+    cipher_choice = input("\nSelect an option: ")
+
+    # Select cipher and its dedicated database
+    if cipher_choice == "1":
+
+        cipher_name = encryption.AES_CIPHER
+        database.DB_NAME = "secure_vault.db"
+
+    elif cipher_choice == "2":
+
+        cipher_name = encryption.CHACHA_CIPHER
+        database.DB_NAME = "chacha_vault.db"
+
+    else:
+        print("Invalid option.")
+        return
+
+    print("\nSelected:", cipher_name)
+    print("Database:", database.DB_NAME)
+
+    # Initialize the selected database
     database.create_tables()
 
     metadata = database.get_metadata()
@@ -29,12 +56,31 @@ def main():
             print("Passphrase cannot be empty.")
             return
 
-        key = vault.create_vault(passphrase)
+        try:
+            key = vault.create_vault(
+                passphrase,
+                cipher_name
+            )
 
-        print("\nVault created successfully!")
+            print("\nVault created successfully!")
+
+        except ValueError as error:
+            print("\nUnable to create vault:", error)
+            return
 
     # Existing vault
     else:
+
+        # Make sure the selected algorithm matches the database
+        stored_cipher = metadata[3]
+
+        if stored_cipher != cipher_name:
+
+            print("\nCipher mismatch!")
+            print("This database uses:", stored_cipher)
+            print("You selected:", cipher_name)
+            print("Please restart and select the correct algorithm.")
+            return
 
         print("\n=== Unlock Secure Vault ===")
 
