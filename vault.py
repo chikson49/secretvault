@@ -166,6 +166,62 @@ def add_secret(key, name, username, password):
     return entry_id
 
 
+def update_secret(key, entry_id, name, username, password):
+
+    # First authenticate the existing entry
+    retrieve_secret(key, entry_id)
+
+    cipher_name = get_vault_cipher()
+
+    entry = database.get_entry(entry_id)
+
+    if entry is None:
+        raise ValueError("Secret not found")
+
+    stored_id, current_version, old_nonce, old_ciphertext = entry
+
+    # Increment the entry version
+    new_version = current_version + 1
+
+    # Prepare updated secret
+    secret_data = {
+        "name": name,
+        "username": username,
+        "password": password
+    }
+
+    plaintext = json.dumps(secret_data).encode("utf-8")
+
+    # Authenticate the new version through AAD
+    aad = encryption.build_aad(
+        stored_id,
+        new_version,
+        1
+    )
+
+    # Encrypt using a fresh nonce
+    nonce, ciphertext = encryption.encrypt_data(
+        key,
+        plaintext,
+        aad,
+        cipher_name
+    )
+
+    # Update the existing database entry
+    updated = database.update_entry(
+        entry_id,
+        current_version,
+        new_version,
+        nonce,
+        ciphertext
+    )
+
+    if updated != 1:
+        raise ValueError("Entry update failed. Please retry.")
+
+    return new_version
+
+
 def retrieve_secret(key, entry_id):
 
     # Identify the cipher used by this vault
