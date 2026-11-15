@@ -3,13 +3,24 @@ import os
 
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.ciphers.aead import (
+    AESGCM,
+    ChaCha20Poly1305
+)
 
 
 KEY_LENGTH = 32
 SALT_LENGTH = 16
 NONCE_LENGTH = 12
 ITERATIONS = 600000
+
+AES_CIPHER = "AES-256-GCM"
+CHACHA_CIPHER = "ChaCha20-Poly1305"
+
+SUPPORTED_CIPHERS = (
+    AES_CIPHER,
+    CHACHA_CIPHER
+)
 
 
 def generate_salt():
@@ -39,13 +50,25 @@ def build_aad(entry_id, entry_version, format_version):
     ).encode("utf-8")
 
 
-def encrypt_data(key, plaintext, aad):
+def encrypt_data(
+    key,
+    plaintext,
+    aad,
+    cipher_name=AES_CIPHER
+):
 
     nonce = os.urandom(NONCE_LENGTH)
 
-    aesgcm = AESGCM(key)
+    if cipher_name == AES_CIPHER:
+        cipher = AESGCM(key)
 
-    ciphertext = aesgcm.encrypt(
+    elif cipher_name == CHACHA_CIPHER:
+        cipher = ChaCha20Poly1305(key)
+
+    else:
+        raise ValueError("Unsupported cipher")
+
+    ciphertext = cipher.encrypt(
         nonce,
         plaintext,
         aad
@@ -54,11 +77,24 @@ def encrypt_data(key, plaintext, aad):
     return nonce, ciphertext
 
 
-def decrypt_data(key, nonce, ciphertext, aad):
+def decrypt_data(
+    key,
+    nonce,
+    ciphertext,
+    aad,
+    cipher_name=AES_CIPHER
+):
 
-    aesgcm = AESGCM(key)
+    if cipher_name == AES_CIPHER:
+        cipher = AESGCM(key)
 
-    return aesgcm.decrypt(
+    elif cipher_name == CHACHA_CIPHER:
+        cipher = ChaCha20Poly1305(key)
+
+    else:
+        raise ValueError("Unsupported cipher")
+
+    return cipher.decrypt(
         nonce,
         ciphertext,
         aad
