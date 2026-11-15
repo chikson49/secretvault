@@ -21,8 +21,8 @@ def main():
     if cipher_choice == "1":
 
         cipher_name = encryption.AES_CIPHER
-        database.DB_NAME = "swapped_test.db"
-        #database.DB_NAME = "secure_vault.db"
+        #database.DB_NAME = "swapped_test.db"
+        database.DB_NAME = "secure_vault.db"
 
     elif cipher_choice == "2":
 
@@ -102,11 +102,11 @@ def main():
     # Main menu
     while True:
 
-        print("\n===== SECURE VAULT =====")
         print("1. Add secret")
         print("2. Retrieve secret")
-        print("3. List entry IDs")
-        print("4. Lock and exit")
+        print("3. Modify secret")
+        print("4. List entry IDs")
+        print("5. Lock and exit")
 
         choice = input("\nSelect an option: ")
 
@@ -153,6 +153,32 @@ def main():
 
         elif choice == "3":
 
+            entry_id = input("Enter entry ID to modify: ")
+
+            name = input("New secret name: ")
+            username = input("New username: ")
+            password = getpass("New secret password: ")
+
+            try:
+                new_version = vault.update_secret(
+                    key,
+                    entry_id,
+                    name,
+                    username,
+                    password
+                )
+
+                print("\nSecret updated successfully!")
+                print("New entry version:", new_version)
+
+            except InvalidTag:
+                print("Authentication failed. Existing data may have been modified.")
+
+            except ValueError as error:
+                print("Unable to update secret:", error)               
+
+        elif choice == "4":
+
             entries = database.list_entries()
 
             if not entries:
@@ -164,7 +190,7 @@ def main():
                 for entry in entries:
                     print(entry[0])
 
-        elif choice == "4":
+        elif choice == "5":
 
             print("\nVault locked. Goodbye!")
             break
