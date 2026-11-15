@@ -59,6 +59,26 @@ def save_metadata(salt, iterations, cipher_name,
         ))
 
 
+def update_entry(entry_id, expected_version, new_version, nonce, ciphertext):
+
+    with create_connection() as conn:
+        cursor = conn.execute("""
+            UPDATE entries
+            SET entry_version = ?,
+                nonce = ?,
+                ciphertext = ?
+            WHERE id = ? AND entry_version = ?
+        """, (
+            new_version,
+            nonce,
+            ciphertext,
+            entry_id,
+            expected_version
+        ))
+
+        return cursor.rowcount
+
+
 def get_metadata():
 
     with create_connection() as conn:
